@@ -1,5 +1,5 @@
 
-name: Unit Test
+name: Unit Testing
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
