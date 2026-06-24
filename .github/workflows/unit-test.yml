@@ -1,9 +1,8 @@
-name: Run Tests
+name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
+  push:
     branches: [ main ]
 
 jobs:
@@ -20,9 +19,33 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run tests
+        run: pytest
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    # 👇 THIS is the key part
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET }}
+          aws-region: ap-southeast-2
+
+      - name: Deploy CloudFormation
         run: |
-          pytest
+          aws cloudformation deploy \
+            --stack-name IAC \
+            --template-file infra/sth.yaml \
+            --capabilities CAPABILITY_NAMED_IAM
