@@ -5,6 +5,14 @@ on:
   push:
     branches: [ main ]
 
+env:
+  AWS_REGION : "ap-southeast-2"
+  ROLE_TO_ASSUME: arn:aws:iam::495671352507:role/github
+
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -36,12 +44,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
-          aws-access-key-id: ${{ secrets.ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET }}
-          aws-region: ap-southeast-2
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          role-session-name: samplerolesession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS Identity
+        run: aws sts get-caller-identity
 
       - name: Deploy CloudFormation
         run: |
