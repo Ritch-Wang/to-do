@@ -1,5 +1,11 @@
-from app import TodoAPI
+from src.todo_api import TodoAPI
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def reset_todos():
+    """Reset shared TodoAPI state before each test."""
+    TodoAPI.todos = []
 
 @pytest.fixture
 def api():
