@@ -1,7 +1,3 @@
-from flask import Flask
-
-app = Flask(__name__)
-
 class TodoAPI:
     def __init__(self):
         self.todos = []
@@ -23,13 +19,3 @@ class TodoAPI:
                 return self.todos.pop(i)
             
         return None
-
-api = TodoAPI()
-
-@app.route("/list", methods=["GET"])
-def get_list_route():
-    return api.get_list()
-
-
-if __name__ == "__main__":
-    app.run(debug=True)

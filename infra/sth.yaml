@@ -24,15 +24,11 @@ Resources:
     Properties:
       FunctionName: my-python-lambda
       Runtime: python3.14
-      Handler: index.lambda_handler
+      Handler: lambda_handler.lambda_handler
       Role: !GetAtt MyLambdaExecutionRole.Arn
       Code:
-        ZipFile: |
-          def lambda_handler(event, context):
-              return {
-                  "statusCode": 200,
-                  "body": "Hi Asep!"
-              }
+        S3Bucket: my-todo-lambda-artifacts-123456
+        S3Key: lambda.zip
 
   MyLambdaFunctionUrl:
     Type: AWS::Lambda::Url
