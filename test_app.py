@@ -1,7 +1,7 @@
 from src.todo_api import TodoAPI
 import pytest
 
-
+# works fine
 @pytest.fixture(autouse=True)
 def reset_todos():
     """Reset shared TodoAPI state before each test."""
