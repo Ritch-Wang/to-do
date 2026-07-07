@@ -4,42 +4,23 @@ from todo_api import TodoAPI
 api = TodoAPI()
 
 def lambda_handler(event, context):
-    def response(status, body):
-        return {
-            "statusCode": status,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(body)
-        }
+    path = event.get("rawPath", "/")
 
-    method = event.get("requestContext", {}).get("http", {}).get("method", "GET")
-    payload = {}
+    if path == "/list":
+        return api.get_list()
 
-    if event.get("body"):
-        try:
-            payload = json.loads(event.get("body"))
-        except Exception:
-            return response(400, {"message": "Invalid JSON body"})
+    elif path == "/add":
+        body = json.loads(event.get("body") or "{}")
+        title = body.get("title")
+        return api.add_item(title)
 
-    if method == "GET":
-        return response(200, api.get_list())
+    elif path == "/delete":
+        body = json.loads(event.get("body") or "{}")
+        item_id = body.get("id")
+        return api.delete_item(item_id)
 
-    elif method == "POST":
-        title = payload.get("title")
-        if not title:
-            return response(400, {"message": "Missing 'title'"})
-
-        return response(201, api.add_item(title))
-
-    elif method == "DELETE":
-        item_id = payload.get("id")
-        if item_id is None:
-            return response(400, {"message": "Missing 'id'"})
-
-        deleted = api.delete_item(item_id)
-        if deleted is None:
-            return response(404, {"message": "Todo not found"})
-
-        return response(200, deleted)
-
-    else:
-        return response(405, {"message": "Method not allowed"})
+    return {
+        "statusCode": 404,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({"error": "Not found"})
+    }

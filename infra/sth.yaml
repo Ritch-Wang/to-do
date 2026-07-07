@@ -1,7 +1,64 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Lambda with Function URL
+Description: Clean Lambda + RDS + Function URL setup
+
+Parameters:
+  DBUsername:
+    Type: String
+    Default: postgres
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+
+  DBName:
+    Type: String
+    Default: todo
 
 Resources:
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda access to RDS
+      VpcId: vpc-06e15352534be0dcb
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  TodoDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Lambda to access PostgreSQL
+      VpcId: vpc-06e15352534be0dcb
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  TodoDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for PostgreSQL
+      SubnetIds:
+        - subnet-032dd0ad8270d6c4f
+        - subnet-020356184c198b04d
+
+  TodoDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: 20
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !Ref TodoDBSecurityGroup
+      DBSubnetGroupName: !Ref TodoDBSubnetGroup
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 0
+      MultiAZ: false
 
   MyLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -12,42 +69,50 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
 
   MyLambdaFunction:
     Type: AWS::Lambda::Function
+    DependsOn: TodoDatabase
     Properties:
-      FunctionName: my-python-lambda
-      Runtime: python3.14
-      Handler: lambda_handler.lambda_handler
-      Role: !GetAtt MyLambdaExecutionRole.Arn
+
+      PackageType: Image
+
       Code:
-        S3Bucket: my-todo-lambda-artifacts-123456
-        S3Key: lambda.zip
+        ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/todo-lambda:latest"
+
+      Role: !GetAtt MyLambdaExecutionRole.Arn
+
+      Timeout: 10
+      MemorySize: 256
+
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt TodoDatabase.Endpoint.Address
+          DB_NAME: !Ref DBName
+          DB_USER: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
+
+      VpcConfig:
+        SubnetIds:
+          - subnet-032dd0ad8270d6c4f
+          - subnet-020356184c198b04d
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
 
   MyLambdaFunctionUrl:
     Type: AWS::Lambda::Url
     Properties:
-      TargetFunctionArn: !Ref MyLambdaFunction
-      AuthType: NONE   # Public access
+      TargetFunctionArn: !GetAtt MyLambdaFunction.Arn
+      AuthType: NONE
 
-  LambdaUrlPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref MyLambdaFunction
-      Action: lambda:InvokeFunctionUrl
-      Principal: "*"
-      FunctionUrlAuthType: NONE
+Outputs:
+  LambdaFunctionUrl:
+    Value: !GetAtt MyLambdaFunctionUrl.FunctionUrl
 
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref MyLambdaFunction
-      Action: lambda:InvokeFunction
-      Principal: "*"
-      InvokedViaFunctionUrl: true
+  DatabaseEndpoint:
+    Value: !GetAtt TodoDatabase.Endpoint.Address
