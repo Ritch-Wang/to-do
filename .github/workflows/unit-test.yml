@@ -17,6 +17,24 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: mydb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U myuser -d mydb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://myuser:testpassword@localhost:5432/mydb
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,6 +46,15 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Create schema
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=testpassword psql -h localhost -U myuser -d mydb -c "
+          CREATE TABLE IF NOT EXISTS todos (
+              id SERIAL PRIMARY KEY,
+              title TEXT NOT NULL
+          );"
 
       - name: Run tests
         run: pytest
