@@ -1,20 +1,36 @@
-from src.todo_api import TodoAPI
 import pytest
+from dotenv import load_dotenv
 
-# works fine
+load_dotenv()  # picks up DATABASE_URL locally; in CI it's set via workflow env
+
+from src.todo_api import TodoAPI
+
+
 @pytest.fixture(autouse=True)
 def reset_todos():
-    """Reset shared TodoAPI state before each test."""
-    TodoAPI.todos = []
+    """
+    Truncate the todos table before each test so every test starts
+    from a known, empty state. RESTART IDENTITY resets the SERIAL
+    counter back to 1 each time, so id assertions stay predictable.
+    """
+    api = TodoAPI()
+    conn = api._get_connection()
+    cur = conn.cursor()
+    cur.execute("TRUNCATE TABLE todos RESTART IDENTITY;")
+    conn.commit()
+    cur.close()
+    conn.close()
+    yield
+
 
 @pytest.fixture
 def api():
     return TodoAPI()
 
+
 @pytest.fixture
-def api_with_items():
+def api_with_items(api):
     """TodoAPI pre-loaded with two items."""
-    api = TodoAPI()
     api.add_item("Buy groceries")
     api.add_item("Walk the dog")
     return api
