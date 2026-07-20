@@ -1,0 +1,19 @@
+# Environment / secrets
+.env
+secrets-policy.json
+trust-policy.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Lambda build artifacts
+package/
+*.zip
+response.json
+
+# OS cruft
+.DS_Store
