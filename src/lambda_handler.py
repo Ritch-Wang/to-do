@@ -31,15 +31,19 @@ def lambda_handler(event, context):
         return response(201, api.add_item(title))
 
     elif method == "DELETE":
-        item_id = payload.get("id")
-        if item_id is None:
-            return response(400, {"message": "Missing 'id'"})
+        # ✅ Read id from the URL path instead
+        raw_path = event.get("rawPath", "")   # e.g. "/list/1"
+        path_parts = raw_path.strip("/").split("/")  # ["list", "1"]
+
+        try:
+            item_id = int(path_parts[-1])  # grab the last segment → 1
+        except (ValueError, IndexError):
+            return response(400, {"message": "Missing or invalid 'id' in URL"})
 
         deleted = api.delete_item(item_id)
         if deleted is None:
             return response(404, {"message": "Todo not found"})
 
         return response(200, deleted)
-
     else:
         return response(405, {"message": "Method not allowed"})

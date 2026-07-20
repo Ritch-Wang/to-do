@@ -23,12 +23,12 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: my-python-lambda
-      Runtime: python3.14
+      Runtime: python3.12
       Handler: lambda_handler.lambda_handler
       Role: !GetAtt MyLambdaExecutionRole.Arn
       Code:
-        S3Bucket: my-todo-lambda-artifacts-123456
-        S3Key: lambda.zip
+        S3Bucket: s3-todo-ritch
+        S3Key: lambda_v1.zip
 
   MyLambdaFunctionUrl:
     Type: AWS::Lambda::Url
